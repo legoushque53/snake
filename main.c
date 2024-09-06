@@ -42,68 +42,66 @@ typedef enum {
 typedef struct {
 		Action action;
 		char text[20];
-	} MenuButton;
+} MenuButton;
 
-	typedef struct {
-		size_t size;
-		char title[20];
-		MenuFlag flags;
-		MenuButton list[];
-	} MenuPage;
+typedef struct {
+	size_t size;
+	char title[20];
+	MenuFlag flags;
+	MenuButton list[];
+} MenuPage;
 
-	MenuPage main_menu = {
-		.size = 3,
-		.title = "MAIN MENU",
-		.flags = 0,
-		.list = {
-			{ACTION_GAME_START, "Start Game"},
-			{ACTION_ENTER_SETTINGS, "Settings"},
-			{ACTION_EXIT_GAME, "Exit"}
-		}
-	};
+MenuPage main_menu = {
+	.size = 3,
+	.title = "MAIN MENU",
+	.flags = 0,
+	.list = {
+		{ACTION_GAME_START, "Start Game"},
+		{ACTION_ENTER_SETTINGS, "Settings"},
+		{ACTION_EXIT_GAME, "Exit"}
+	}
+};
 
-	MenuPage settings_menu = {
-		.size = 3,
-		.title = "SELECT GRIDSIZE",
-		.flags = MENU_FLAG_IS_SETTINGS,
-		.list = {
-			{ACTION_ENTER_MAIN_MENU, "Main Menu"},
-			{ACTION_GRIDSIZE, ""},
-			{ACTION_GRIDSIZE, ""},
-			{ACTION_GRIDSIZE, ""}
-		}
-	};
+MenuPage settings_menu = {
+	.size = 2,
+	.title = "SELECT GRIDSIZE",
+	.flags = MENU_FLAG_IS_SETTINGS,
+	.list = {
+		{ACTION_ENTER_MAIN_MENU, "Main Menu"},
+		{ACTION_GRIDSIZE, ""},
+	}
+};
 
-	MenuPage pause_menu = {
-		.size = 3,
-		.title = "PAUSE",
-		.flags = MENU_FLAG_SHOWGAME | MENU_FLAG_SHOWSCORE,
-		.list = {
-			{ACTION_RESUME, "Resume"},
-			{ACTION_ENTER_MAIN_MENU, "Main Menu"},
-			{ACTION_EXIT_GAME, "Exit"}
-		}
-	};
+MenuPage pause_menu = {
+	.size = 3,
+	.title = "PAUSE",
+	.flags = MENU_FLAG_SHOWGAME | MENU_FLAG_SHOWSCORE,
+	.list = {
+		{ACTION_RESUME, "Resume"},
+		{ACTION_ENTER_MAIN_MENU, "Main Menu"},
+		{ACTION_EXIT_GAME, "Exit"}
+	}
+};
 
 
-	MenuPage death_menu = {
-		.size = 3,
-		.title = "YOU ARE DEAD",
-		.flags = MENU_FLAG_SHOWGAME | MENU_FLAG_SHOWSCORE,
-		.list = {
-			{ACTION_GAME_START, "Start again"},
-			{ACTION_ENTER_MAIN_MENU, "Main Menu"},
-			{ACTION_EXIT_GAME, "Exit"}
-		}
-	};
+MenuPage death_menu = {
+	.size = 3,
+	.title = "YOU ARE DEAD",
+	.flags = MENU_FLAG_SHOWGAME | MENU_FLAG_SHOWSCORE,
+	.list = {
+		{ACTION_GAME_START, "Start again"},
+		{ACTION_ENTER_MAIN_MENU, "Main Menu"},
+		{ACTION_EXIT_GAME, "Exit"}
+	}
+};
 
-	Vector2 pos;
-	Vector2 vel;
-	Color BG_COLOR;
-	float speed, cell_size, x_offset, y_offset, padding;
-	Array snake;
-	Direction prev_dir;
-	Direction dir;
+Vector2 pos;
+Vector2 vel;
+Color BG_COLOR;
+float speed, cell_size, x_offset, y_offset, padding;
+Array snake;
+Direction prev_dir;
+Direction dir;
 Queue move_queue;
 GamePhase game_state = MAIN_MENU;
 float game_time;
