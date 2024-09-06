@@ -17,34 +17,98 @@ typedef enum {
 
 typedef enum {
 	GAME,
-	DEATH,
-	MENU
+	DEATH_MENU,
+	MAIN_MENU,
+	SETTINGS_MENU,
+	PAUSE_MENU
 } GamePhase;
 
 typedef enum {
-	MENU_BUTTON_START,
-	MENU_BUTTON_SETTINGS,
-	MENU_BUTTON_EXIT,
-} MenuButton;
+	ACTION_GAME_START,
+	ACTION_ENTER_SETTINGS,
+	ACTION_ENTER_MAIN_MENU,
+	ACTION_EXIT_GAME,
+	ACTION_RESUME,
+	ACTION_GRIDSIZE,
+	ACTION_PAUSE
+} Action;
 
 typedef enum {
-	MENU_STATE_MAIN,
-	MENU_STATE_SETTINGS
-} MenuState;
+	MENU_FLAG_SHOWGAME = 1,
+	MENU_FLAG_SHOWSCORE = 2,
+	MENU_FLAG_IS_SETTINGS = 4
+} MenuFlag;
 
-Vector2 pos;
-Vector2 vel;
-Color BG_COLOR;
-float speed, cell_size, x_offset, y_offset, padding;
-Array snake;
-Direction prev_dir;
-Direction dir;
+typedef struct {
+		Action action;
+		char text[20];
+	} MenuButton;
+
+	typedef struct {
+		size_t size;
+		char title[20];
+		MenuFlag flags;
+		MenuButton list[];
+	} MenuPage;
+
+	MenuPage main_menu = {
+		.size = 3,
+		.title = "MAIN MENU",
+		.flags = 0,
+		.list = {
+			{ACTION_GAME_START, "Start Game"},
+			{ACTION_ENTER_SETTINGS, "Settings"},
+			{ACTION_EXIT_GAME, "Exit"}
+		}
+	};
+
+	MenuPage settings_menu = {
+		.size = 3,
+		.title = "SELECT GRIDSIZE",
+		.flags = MENU_FLAG_IS_SETTINGS,
+		.list = {
+			{ACTION_ENTER_MAIN_MENU, "Main Menu"},
+			{ACTION_GRIDSIZE, ""},
+			{ACTION_GRIDSIZE, ""},
+			{ACTION_GRIDSIZE, ""}
+		}
+	};
+
+	MenuPage pause_menu = {
+		.size = 3,
+		.title = "PAUSE",
+		.flags = MENU_FLAG_SHOWGAME | MENU_FLAG_SHOWSCORE,
+		.list = {
+			{ACTION_RESUME, "Resume"},
+			{ACTION_ENTER_MAIN_MENU, "Main Menu"},
+			{ACTION_EXIT_GAME, "Exit"}
+		}
+	};
+
+
+	MenuPage death_menu = {
+		.size = 3,
+		.title = "YOU ARE DEAD",
+		.flags = MENU_FLAG_SHOWGAME | MENU_FLAG_SHOWSCORE,
+		.list = {
+			{ACTION_GAME_START, "Start again"},
+			{ACTION_ENTER_MAIN_MENU, "Main Menu"},
+			{ACTION_EXIT_GAME, "Exit"}
+		}
+	};
+
+	Vector2 pos;
+	Vector2 vel;
+	Color BG_COLOR;
+	float speed, cell_size, x_offset, y_offset, padding;
+	Array snake;
+	Direction prev_dir;
+	Direction dir;
 Queue move_queue;
-GamePhase game_state = MENU;
+GamePhase game_state = MAIN_MENU;
 float game_time;
 int snake_size;
 int score;
-
 
 int menu_size = 3;
 int menu_pos = 0;
@@ -55,7 +119,7 @@ int move[] = {0, -1};
 int width = 1280;
 int height = 720;
 int grid_size = 20;
-MenuState menu_state = MENU_STATE_MAIN;
+bool do_action;
 
 void set_score_text(char buffer[], char score_text[], int score){
     sprintf(buffer, "%s: %d", score_text, score);
@@ -213,7 +277,7 @@ void NewGameFrame(){
 			(snake.array[1] + move[1] + grid_size)%grid_size,
 		};
 		if (SnakeIntersect(snake, new_pos[0], new_pos[1], 0)){
-			game_state = DEATH;
+			game_state = DEATH_MENU;
 			game_time = 0;
 			return;
 		};
@@ -239,84 +303,126 @@ void NewGameFrame(){
 	
 }
 
-void GetMenuText(char menu_text[], int pos){
-	MenuButton button = (MenuButton)pos;
-	switch(pos){
-		case MENU_BUTTON_START:
-			sprintf(menu_text, "%s", "Start Game");
+void DoAction(Action action){
+	switch(action){
+		case ACTION_GAME_START:
+			ResetGameState();
+			game_state = GAME;
 			break;
-		case MENU_BUTTON_SETTINGS:
-			sprintf(menu_text, "%s", "Settings");
+		case ACTION_EXIT_GAME:
+			exit(1);
 			break;
-		case MENU_BUTTON_EXIT:
-			sprintf(menu_text, "%s", "Exit");
+		case ACTION_ENTER_SETTINGS:
+			game_state = SETTINGS_MENU;
+			break;
+		case ACTION_ENTER_MAIN_MENU:
+			game_state = MAIN_MENU;
+			break;
+		case ACTION_RESUME:
+			game_state = GAME;
+			break;
+		case ACTION_PAUSE:
+			game_state = PAUSE_MENU;
 			break;
 	}
 }
 
 void MenuFrame(){
-	char menu_text[100];
+	MenuPage *menu_page;
+	switch(game_state){
+		case MAIN_MENU:
+			menu_page = &main_menu;
+			break;
+		case PAUSE_MENU:
+			menu_page = &pause_menu;
+			break;
+		case DEATH_MENU:
+			menu_page = &death_menu;
+			break;
+		case SETTINGS_MENU:
+			break;
+		default:
+			break;
+	}
 	int font_size = 30;
 	int text_width;
 	int x_text_offset;
 	int y_text_offset;
 	Color col;
-	for(int i = 0; i < menu_size; i++){
+	menu_pos = (menu_pos%menu_page->size + menu_page->size)%menu_page->size;
+	ClearBackground(BG_COLOR);
+	if(menu_page->flags & MENU_FLAG_SHOWGAME){
+		DrawGameState();
+		DrawRectangle(0, 0, width, height, (Color){0x18, 0x18, 0x18, 0xDD});
+	}
+	for(int i = 0; i < menu_page->size; i++){
 		if(i == menu_pos){
 			col = YELLOW;	
 		} else {
 			col = WHITE;
 		}
-		GetMenuText(menu_text, i);
-		text_width = MeasureText(menu_text, font_size);
+		text_width = MeasureText(menu_page->list[i].text, font_size);
 		x_text_offset = (width-text_width)/2;
 		y_text_offset = font_size*i + (height-menu_size*font_size)/2;
-		DrawText(menu_text, x_text_offset, y_text_offset, font_size, col);
+		DrawText(menu_page->list[i].text, x_text_offset, y_text_offset, font_size, col);
+	}
+	text_width = MeasureText(menu_page->title, font_size);
+	x_text_offset = (width-text_width)/2;
+	y_text_offset = font_size*(-2) + (height-menu_size*font_size)/2;
+	DrawText(menu_page->title, x_text_offset, y_text_offset, font_size, BLUE);
+
+	if(menu_page->flags & MENU_FLAG_SHOWSCORE){
+		char score_text[strlen("score: ") + 4];
+		set_score_text(score_text, "score", score);
+		text_width = MeasureText(score_text, font_size);
+		x_text_offset = (width-text_width)/2;
+		y_text_offset = font_size*(menu_page->size + 2) + (height-font_size)/2;
+		DrawText(score_text, x_text_offset, y_text_offset, font_size, WHITE);	
+
+		char max_score_text[strlen("max_score: ") + 4];
+		set_score_text(max_score_text, "max_score", max_score);
+		text_width = MeasureText(max_score_text, font_size);
+		x_text_offset = (width-text_width)/2;
+		y_text_offset = font_size*(menu_page->size + 3) + (height-font_size)/2;
+		DrawText(max_score_text, x_text_offset, y_text_offset, font_size, WHITE);	
 	}
 
+	if(do_action){
+		do_action = false;
+		DoAction(menu_page->list[menu_pos].action);
+	}
 }
 
 void HandleKeys(){
 	switch (game_state){
-	case DEATH:
-		if (IsKeyPressed(KEY_ENTER)){
-			ResetGameState();
-			game_state = GAME;
-		}
-		break;
 	case GAME:
 		if (IsKeyPressed(KEY_RIGHT)) queue_push(&move_queue, RIGHT);
 		if (IsKeyPressed(KEY_LEFT)) queue_push(&move_queue, LEFT);
 		if (IsKeyPressed(KEY_UP)) queue_push(&move_queue, UP); 
 		if (IsKeyPressed(KEY_DOWN)) queue_push(&move_queue, DOWN); 
+		if (IsKeyPressed(KEY_ESCAPE)) DoAction(ACTION_PAUSE);
 		break;
-	case MENU:
-		if (IsKeyPressed(KEY_UP)) menu_pos = (menu_pos - 1 + menu_size)%menu_size; 
-		if (IsKeyPressed(KEY_DOWN)) menu_pos = (menu_pos + 1)%menu_size; 
-		if (IsKeyPressed(KEY_ENTER)){
-			switch( (MenuButton)menu_pos ){
-				case MENU_BUTTON_START:
-					game_state = GAME;
-					ResetGameState();
-					return;
-				case MENU_BUTTON_EXIT:
-					exit(0);
-
-			}
-		}
+	case MAIN_MENU:
+	case PAUSE_MENU:
+	case SETTINGS_MENU:
+	case DEATH_MENU:
+		if (IsKeyPressed(KEY_UP)) menu_pos = (menu_pos - 1); 
+		if (IsKeyPressed(KEY_DOWN)) menu_pos = (menu_pos + 1); 
+		if (IsKeyPressed(KEY_ENTER)) do_action = true; 
 	}
 }
 
 
 int main(){
     InitWindow(width, height, "Snake!");
+	SetExitKey(0);
 	SetTargetFPS(60);
 	BG_COLOR = GetColor(0x181818FF);
 	srand(time(NULL));
 
 	ResetGameState();	
 	while(!WindowShouldClose()){
-		game_time += GetFrameTime();
+		float local_time = GetFrameTime();
         BeginDrawing();
 		width = GetScreenWidth();
 		height = GetScreenHeight();
@@ -326,13 +432,14 @@ int main(){
 		y_offset = (height < width ? 0 : ((float)height - width)/2);
 		HandleKeys();
 		switch(game_state){
-			case DEATH:
-				DeathFrame();
-				break;
 			case GAME:
+				game_time += local_time;
 				NewGameFrame();
 				break;
-			case MENU:
+			case MAIN_MENU:
+			case PAUSE_MENU:
+			case SETTINGS_MENU:
+			case DEATH_MENU:
 				MenuFrame();
 				break;
 		}
