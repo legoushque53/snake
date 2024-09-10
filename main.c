@@ -95,7 +95,7 @@ SettingsPage settings_menu = {
 MenuPage main_menu = {
 	.size = 3,
 	.title = "MAIN MENU",
-	.flags = 0,
+	.flags = MENU_FLAG_SHOWGAME,
 	.list = {
 		{ACTION_GAME_START, "Start Game"},
 		{ACTION_ENTER_SETTINGS, "Settings"},
@@ -270,9 +270,8 @@ void NewGameFrame(){
 	set_score_text(score_text, "score", score);
 	char max_score_text[strlen("max_score: ") + 4];
 	set_score_text(max_score_text, "max_score", max_score);
-	DrawText(score_text, padding*5, padding*5, 32, WHITE);	
-	DrawText(max_score_text, padding*5, 32+padding*5, 32, WHITE);	
-	printf("HERE\n");
+	DrawText(score_text, padding*5, padding*5, font_size, WHITE);	
+	DrawText(max_score_text, padding*5, font_size+padding*5, font_size, WHITE);	
 	if (game_time > speed) {
 		HandleMovements();
 		int new_pos[] = {
@@ -335,11 +334,13 @@ void MakeChange(SettingsComponent *comp){
 	switch(comp->change){
 		case CHANGE_FULLSCREEN:
 			ToggleFullscreen();
+			break;
 		case CHANGE_GRIDSIZE:
 			while(comp->params[i] != grid_size){
 				i++;
 			}
 			grid_size = comp->params[mod(i+1, comp->size)];
+			break;
 		default:
 			break;
 	}
@@ -466,10 +467,10 @@ void HandleKeys(){
 	switch (game_state){
 	case GAME:
 		if (IsKeyPressed(KEY_RIGHT)) queue_push(&move_queue, RIGHT);
+		if (IsKeyPressed(KEY_ESCAPE)) DoAction(ACTION_PAUSE);
 		if (IsKeyPressed(KEY_LEFT)) queue_push(&move_queue, LEFT);
 		if (IsKeyPressed(KEY_UP)) queue_push(&move_queue, UP); 
 		if (IsKeyPressed(KEY_DOWN)) queue_push(&move_queue, DOWN); 
-		if (IsKeyPressed(KEY_ESCAPE)) DoAction(ACTION_PAUSE);
 		break;
 	case MAIN_MENU:
 	case PAUSE_MENU:
@@ -491,8 +492,8 @@ int main(){
 
 	ResetGameState();	
 	while(!WindowShouldClose()){
+
 		float local_time = GetFrameTime();
-        BeginDrawing();
 		if(IsWindowFullscreen()){
 			width = GetRenderWidth();
 			height = GetRenderHeight();
@@ -505,6 +506,7 @@ int main(){
 		x_offset = (width < height ? 0 : ((float)width - height)/2);
 		y_offset = (height < width ? 0 : ((float)height - width)/2);
 		font_size=width/40;
+		BeginDrawing();
 		HandleKeys();
 		switch(game_state){
 			case GAME:
