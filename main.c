@@ -29,7 +29,6 @@ typedef enum {
 	ACTION_ENTER_MAIN_MENU,
 	ACTION_EXIT_GAME,
 	ACTION_RESUME,
-	ACTION_GRIDSIZE,
 	ACTION_PAUSE
 } Action;
 
@@ -41,7 +40,7 @@ typedef enum {
 
 typedef struct {
 		Action action;
-		char text[20];
+		char text[50];
 } MenuButton;
 
 typedef struct {
@@ -50,6 +49,48 @@ typedef struct {
 	MenuFlag flags;
 	MenuButton list[];
 } MenuPage;
+
+typedef enum {
+	CHANGE_GRIDSIZE,
+	CHANGE_FULLSCREEN,
+} Change;
+
+typedef struct {
+	size_t size;
+	Change change;
+	char text[30];
+	int params[5];
+} SettingsComponent;
+
+typedef struct {
+	size_t buttons_size;
+	size_t components_size;
+	char title[30];
+	MenuButton buttons[5];
+	SettingsComponent components[3];
+} SettingsPage;
+
+
+SettingsPage settings_menu = {
+	.buttons_size = 1,
+	.components_size = 2,
+	.title = "Settings",
+	.buttons = { {ACTION_ENTER_MAIN_MENU, "Return to Main Menu" } },
+	.components = {
+		{
+			.size = 3,
+			.change = CHANGE_GRIDSIZE,
+			.text = "Grid Size",
+			.params = {10, 20, 30}
+		},
+		{
+			.size = 2,
+			.change = CHANGE_FULLSCREEN,
+			.text = "Toggle Fullscreen",
+			.params = {0, 1}
+		}
+	}
+};
 
 MenuPage main_menu = {
 	.size = 3,
@@ -62,15 +103,6 @@ MenuPage main_menu = {
 	}
 };
 
-MenuPage settings_menu = {
-	.size = 2,
-	.title = "SELECT GRIDSIZE",
-	.flags = MENU_FLAG_IS_SETTINGS,
-	.list = {
-		{ACTION_ENTER_MAIN_MENU, "Main Menu"},
-		{ACTION_GRIDSIZE, ""},
-	}
-};
 
 MenuPage pause_menu = {
 	.size = 3,
@@ -108,7 +140,7 @@ float game_time;
 int snake_size;
 int score;
 
-int menu_size = 3;
+int font_size = 30;
 int menu_pos = 0;
 float default_speed = 0.2;
 int max_score = 0;
@@ -190,34 +222,6 @@ void DrawGameState(){
 
 }
 
-void DeathFrame(){ 
-	ClearBackground(BG_COLOR);
-	DrawGameState();
-	DrawRectangle(0, 0, width, height, (Color){0, 0, 0, 0xDD});
-	int font_size = 30;
-	int text_width;
-	int x_text_offset;
-	int y_text_offset;
-	char message[] = "You are dead! Press ENTER to continue.";
-	text_width = MeasureText(message, font_size);
-	x_text_offset = (width-text_width)/2;
-	y_text_offset = (height-font_size)/2;
-	DrawText(message, x_text_offset, y_text_offset, font_size, WHITE);
-
-	char score_text[strlen("score: ") + 4];
-	set_score_text(score_text, "score", score);
-	text_width = MeasureText(score_text, font_size);
-	x_text_offset = (width-text_width)/2;
-	y_text_offset = font_size+font_size/2 + (height-font_size)/2;
-	DrawText(score_text, x_text_offset, y_text_offset, font_size, WHITE);	
-
-	char max_score_text[strlen("max_score: ") + 4];
-	set_score_text(max_score_text, "max_score", max_score);
-	text_width = MeasureText(max_score_text, font_size);
-	x_text_offset = (width-text_width)/2;
-	y_text_offset = 2*font_size+font_size/2 + (height-font_size)/2;
-	DrawText(max_score_text, x_text_offset, y_text_offset, font_size, WHITE);	
-}
 
 void HandleMovements(){
 	Direction new_dir;
@@ -268,6 +272,7 @@ void NewGameFrame(){
 	set_score_text(max_score_text, "max_score", max_score);
 	DrawText(score_text, padding*5, padding*5, 32, WHITE);	
 	DrawText(max_score_text, padding*5, 32+padding*5, 32, WHITE);	
+	printf("HERE\n");
 	if (game_time > speed) {
 		HandleMovements();
 		int new_pos[] = {
@@ -325,29 +330,95 @@ void DoAction(Action action){
 	}
 }
 
-void MenuFrame(){
-	MenuPage *menu_page;
-	switch(game_state){
-		case MAIN_MENU:
-			menu_page = &main_menu;
-			break;
-		case PAUSE_MENU:
-			menu_page = &pause_menu;
-			break;
-		case DEATH_MENU:
-			menu_page = &death_menu;
-			break;
-		case SETTINGS_MENU:
-			break;
+void MakeChange(SettingsComponent *comp){
+	int i = 0;
+	switch(comp->change){
+		case CHANGE_FULLSCREEN:
+			ToggleFullscreen();
+		case CHANGE_GRIDSIZE:
+			while(comp->params[i] != grid_size){
+				i++;
+			}
+			grid_size = comp->params[mod(i+1, comp->size)];
 		default:
 			break;
 	}
-	int font_size = 30;
+}
+
+
+void GetChangeTextAndColor(Change change, int param, char *buffer, Color *col){
+	bool is_fullscreen = IsWindowFullscreen();
+	switch(change){
+		case CHANGE_GRIDSIZE:
+			if(grid_size == param) {*col = GREEN;} else {*col = WHITE;}
+			sprintf(buffer, "%d x %d", param, param);
+			break;
+		case CHANGE_FULLSCREEN:
+			if(param == is_fullscreen) {*col = GREEN;} else {*col = WHITE;}
+			sprintf(buffer, "%s", param == 0 ? "off" : "on");
+			break;
+		default: 
+			break;
+	};
+}
+
+void SettingsFrame(SettingsPage *page){
 	int text_width;
 	int x_text_offset;
 	int y_text_offset;
 	Color col;
-	menu_pos = (menu_pos%menu_page->size + menu_page->size)%menu_page->size;
+	int total_size = page->buttons_size + page->components_size;
+	menu_pos = mod(menu_pos, total_size);
+	ClearBackground(BG_COLOR);
+	int i = 0;
+	text_width = MeasureText(page->buttons[0].text, font_size);
+	for(; i < page->buttons_size; i++){
+		if(i == menu_pos){
+			col = YELLOW;	
+		} else {
+			col = WHITE;
+		}
+		x_text_offset = font_size * 3;
+		y_text_offset = font_size*i + (height-total_size*font_size)/2;
+		DrawText(page->buttons[i].text, x_text_offset, y_text_offset, font_size, col);
+	}
+
+	for(; i < total_size; i++){
+		if(i == menu_pos){
+			col = YELLOW;	
+		} else {
+			col = WHITE;
+		}
+		SettingsComponent comp = page->components[i%page->components_size];
+		x_text_offset = font_size * 3;
+		y_text_offset = font_size*i + (height-total_size*font_size)/2;
+		DrawText(comp.text, x_text_offset, y_text_offset, font_size, col);
+		int text_end = x_text_offset + text_width + font_size*3;
+		char buffer[80];
+		for(int j = 0; j < comp.size; j++){
+			GetChangeTextAndColor(comp.change, comp.params[j], buffer, &col);
+			DrawText(buffer, text_end, y_text_offset, font_size, col);
+			text_end += MeasureText(buffer, font_size) + font_size*3;
+		}
+	}
+
+	if(do_action){
+		do_action = false;
+		if(menu_pos < page->buttons_size){
+			DoAction(page->buttons[menu_pos].action);
+		} else {
+			SettingsComponent comp = page->components[menu_pos%page->components_size];
+			MakeChange(&comp);
+		}
+	}
+}
+
+void MenuFrame(MenuPage *menu_page){
+	int text_width;
+	int x_text_offset;
+	int y_text_offset;
+	Color col;
+	menu_pos = mod(menu_pos, menu_page->size);
 	ClearBackground(BG_COLOR);
 	if(menu_page->flags & MENU_FLAG_SHOWGAME){
 		DrawGameState();
@@ -361,12 +432,12 @@ void MenuFrame(){
 		}
 		text_width = MeasureText(menu_page->list[i].text, font_size);
 		x_text_offset = (width-text_width)/2;
-		y_text_offset = font_size*i + (height-menu_size*font_size)/2;
+		y_text_offset = font_size*i + (height-menu_page->size*font_size)/2;
 		DrawText(menu_page->list[i].text, x_text_offset, y_text_offset, font_size, col);
 	}
 	text_width = MeasureText(menu_page->title, font_size);
 	x_text_offset = (width-text_width)/2;
-	y_text_offset = font_size*(-2) + (height-menu_size*font_size)/2;
+	y_text_offset = font_size*(-2) + (height-menu_page->size*font_size)/2;
 	DrawText(menu_page->title, x_text_offset, y_text_offset, font_size, BLUE);
 
 	if(menu_page->flags & MENU_FLAG_SHOWSCORE){
@@ -422,12 +493,18 @@ int main(){
 	while(!WindowShouldClose()){
 		float local_time = GetFrameTime();
         BeginDrawing();
-		width = GetScreenWidth();
-		height = GetScreenHeight();
+		if(IsWindowFullscreen()){
+			width = GetRenderWidth();
+			height = GetRenderHeight();
+		} else {
+			width = GetScreenWidth();
+			height = GetScreenHeight();
+		}
 		cell_size = (float)(width < height ? width : height) / grid_size;
 		padding = 0.05 * cell_size;
 		x_offset = (width < height ? 0 : ((float)width - height)/2);
 		y_offset = (height < width ? 0 : ((float)height - width)/2);
+		font_size=width/40;
 		HandleKeys();
 		switch(game_state){
 			case GAME:
@@ -435,10 +512,16 @@ int main(){
 				NewGameFrame();
 				break;
 			case MAIN_MENU:
+				MenuFrame(&main_menu);
+				break;
 			case PAUSE_MENU:
+				MenuFrame(&pause_menu);
+				break;
 			case SETTINGS_MENU:
+				SettingsFrame(&settings_menu);
+				break;
 			case DEATH_MENU:
-				MenuFrame();
+				MenuFrame(&death_menu);
 				break;
 		}
         EndDrawing();

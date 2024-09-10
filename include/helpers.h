@@ -49,3 +49,9 @@ int queue_pop(Queue *q){
 	q->start = (q->start + 1)%q->length;
 	return item;
 }
+
+
+
+int mod(int a, int b){
+	return ((a % b) + b) % b;
+}
