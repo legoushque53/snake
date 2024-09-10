@@ -14,7 +14,6 @@ typedef enum {
 	DOWN
 } Direction;
 
-
 typedef enum {
 	GAME,
 	DEATH_MENU,
@@ -69,7 +68,6 @@ typedef struct {
 	MenuButton buttons[5];
 	SettingsComponent components[3];
 } SettingsPage;
-
 
 SettingsPage settings_menu = {
 	.buttons_size = 1,
@@ -190,7 +188,6 @@ void ResetGameState(){
 	queue_push(&move_queue, dir);
 }
 
-
 void DrawGameState(){
 	float x, y;
 	Color cell = {
@@ -219,9 +216,7 @@ void DrawGameState(){
 			}
 			DrawRectangle(x + padding, y + padding, cell_size - padding, cell_size - padding, current);
 		};
-
 }
-
 
 void HandleMovements(){
 	Direction new_dir;
@@ -253,7 +248,6 @@ void HandleMovements(){
 			break;	
 	}
 	dir = new_dir;
-
 }
 
 void print_queue(Queue q){
@@ -345,7 +339,6 @@ void MakeChange(SettingsComponent *comp){
 			break;
 	}
 }
-
 
 void GetChangeTextAndColor(Change change, int param, char *buffer, Color *col){
 	bool is_fullscreen = IsWindowFullscreen();
@@ -489,10 +482,8 @@ int main(){
 	SetTargetFPS(60);
 	BG_COLOR = GetColor(0x181818FF);
 	srand(time(NULL));
-
 	ResetGameState();	
 	while(!WindowShouldClose()){
-
 		float local_time = GetFrameTime();
 		if(IsWindowFullscreen()){
 			width = GetRenderWidth();
