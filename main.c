@@ -7,6 +7,12 @@
 #include "raymath.h"
 #include "helpers.h"
 
+#define BG_COLOR GetColor(0x181818FF)
+#define COLOR_APPLE RED
+#define COLOR_HEAD GetColor(0x2D4739FF)
+#define COLOR_BODY GetColor(0x09814aFF)
+#define COLOR_CELL GetColor(0xDFDFDFFF)
+
 typedef enum {
 	RIGHT,
 	LEFT,
@@ -93,7 +99,7 @@ SettingsPage settings_menu = {
 MenuPage main_menu = {
 	.size = 3,
 	.title = "MAIN MENU",
-	.flags = MENU_FLAG_SHOWGAME,
+	.flags = 0,
 	.list = {
 		{ACTION_GAME_START, "Start Game"},
 		{ACTION_ENTER_SETTINGS, "Settings"},
@@ -127,7 +133,6 @@ MenuPage death_menu = {
 
 Vector2 pos;
 Vector2 vel;
-Color BG_COLOR;
 float speed, cell_size, x_offset, y_offset, padding;
 Array snake;
 Direction prev_dir;
@@ -190,15 +195,6 @@ void ResetGameState(){
 
 void DrawGameState(){
 	float x, y;
-	Color cell = {
-		.r = 0xDF,
-		.g = 0xDF,
-		.b = 0xDF,
-		.a = 0xFF
-	};
-	Color head = GetColor(0x2D4739FF);
-	Color player = GetColor(0x09814aFF);
-	Color apple = RED;
 	Color current;
 	for(int i = 0; i < grid_size; i++)
 		for(int j = 0; j < grid_size; j++){
@@ -206,13 +202,13 @@ void DrawGameState(){
 			y = j * cell_size + y_offset;
 			bool is_snake = SnakeIntersect(snake, i, j, 0);
 			if(i == snake.array[0] & j == snake.array[1]) {
-				current = head;
+				current = COLOR_HEAD;
 			} else if (is_snake) {
-				current = player;
+				current = COLOR_BODY;
 			} else if (i == apple_pos[0] & j == apple_pos[1]){
-				current = apple;
+				current = COLOR_APPLE;
 			} else {
-				current = cell;
+				current = COLOR_CELL;
 			}
 			DrawRectangle(x + padding, y + padding, cell_size - padding, cell_size - padding, current);
 		};
@@ -480,7 +476,6 @@ int main(){
     InitWindow(width, height, "Snake!");
 	SetExitKey(0);
 	SetTargetFPS(60);
-	BG_COLOR = GetColor(0x181818FF);
 	srand(time(NULL));
 	ResetGameState();	
 	while(!WindowShouldClose()){
